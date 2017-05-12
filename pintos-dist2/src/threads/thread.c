@@ -71,7 +71,6 @@ static void schedule (void);
 void thread_schedule_tail (struct thread *prev);
 static tid_t allocate_tid (void);
 
-void priority_check (void); /*checks the priority of current thread against the top priority thread in the updated ready list*/
 
 /* Initializes the threading system by transforming the code
    that's currently running into a thread.  This can't work in
@@ -206,6 +205,8 @@ thread_create (const char *name, int priority,
   
   //list_sort(&ready_list,&elem_comparator, NULL); not needed
   
+  /*MY CODE: Priority checked because created thread may have a higher
+   priority than current thread*/
   enum intr_level old_level = intr_disable();
   priority_check ();
   intr_set_level (old_level);
@@ -248,7 +249,8 @@ thread_unblock (struct thread *t)
   old_level = intr_disable ();
   ASSERT (t->status == THREAD_BLOCKED);
   //list_push_back (&ready_list, &t->elem);
-  list_insert_ordered (&ready_list, &t->elem, &elem_comparator, NULL); /*inserts thread according to priority*/
+  /*MY CODE: inserts thread according to priority*/
+  list_insert_ordered (&ready_list, &t->elem, &elem_comparator, NULL);
   t->status = THREAD_READY;
   intr_set_level (old_level);
 }
@@ -319,7 +321,8 @@ thread_yield (void)
 
   old_level = intr_disable ();
   if (cur != idle_thread) 
-    //list_push_back (&ready_list, &cur->elem);
+    //list_push_back (&ready_list, &cur->elem); deleted code
+    /*MY CODE: inserts thread according to priority*/
     list_insert_ordered (&ready_list, &cur->elem, &elem_comparator, NULL);
   cur->status = THREAD_READY;
   schedule ();
@@ -350,6 +353,8 @@ thread_set_priority (int new_priority)
   thread_current ()->priority = new_priority;
   //list_sort(&ready_list,&elem_comparator, NULL); not needed
   
+  /*MY CODE: Priority checked because new priority may be
+   lower than highest priority thread in ready list*/
   enum intr_level old_level = intr_disable();
   priority_check ();
   intr_set_level (old_level);
@@ -603,7 +608,8 @@ uint32_t thread_stack_ofs = offsetof (struct thread, stack);
 
 /*My Code starts here*/
 
-/*Yields the CPU if current thread need to be preempted due to a higher priority thread being introduced*/
+/*Yields the CPU if current thread need to be preempted due to a higher 
+ * priority thread in the ready list*/
 void
 priority_check (void)
 {
@@ -621,4 +627,4 @@ bool elem_comparator (const struct list_elem *a, const struct list_elem *b, void
     return list_entry(a, struct thread, elem)->priority > list_entry(b, struct thread, elem)->priority;
 }
 
-/*My Code ends here*/ 
+/*My Code ends here*/
